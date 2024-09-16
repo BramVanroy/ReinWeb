@@ -273,6 +273,7 @@ if __name__ == "__main__":
     cparser.add_argument("--partition", type=str, required=True, help="Slurm partition")
     cparser.add_argument("--pipelines_config", type=str, required=True, help="Path to the pipelines YAML config file")
     cparser.add_argument("--venv_path", type=str, help="Path to the virtual environment")
+    cparser.add_argument("--account", type=str, help="Slurm account")
 
     cli_kwargs = vars(cparser.parse_args())
     main(**cli_kwargs)
