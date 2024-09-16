@@ -258,6 +258,7 @@ if __name__ == "__main__":
         "--dump", type=str, required=True, help="CommonCrawl dump (see https://commoncrawl.org/overview)"
     )
     cparser.add_argument("--output_path", type=str, required=True, help="Output path")
+    cparser.add_argument("--partition", type=str, required=True, help="Slurm partition")
     cparser.add_argument("--pipelines_config", type=str, required=True, help="Path to the pipelines YAML config file")
     cparser.add_argument("--venv_path", type=str, help="Path to the virtual environment")
     cli_kwargs = vars(cparser.parse_args())
