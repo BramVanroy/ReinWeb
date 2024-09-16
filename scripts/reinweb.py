@@ -2,6 +2,7 @@
 This file contains the code used to process and create the
 ReinWeb dataset. Heavily inspired by https://raw.githubusercontent.com/huggingface/datatrove/main/examples/fineweb.py
 """
+
 from dataclasses import field
 from pathlib import Path
 from typing import Literal, Optional
@@ -59,8 +60,8 @@ class BaseConfig(BaseModel):
 
 class ExtractorCfg(BaseConfig):
     gopher_quality_filter: Optional[dict] = field(default_factory=dict)
-    c4_quality_filter: Optional[dict] = field(default_factory=dict
-    fineweb_quality_filter: Optional[dict] = field(default_factory=dict
+    c4_quality_filter: Optional[dict] = field(default_factory=dict)
+    fineweb_quality_filter: Optional[dict] = field(default_factory=dict)
 
 
 class HashCfg(BaseModel):
