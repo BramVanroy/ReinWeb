@@ -144,6 +144,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         mem_per_cpu_gb=extract_cfg.mem_per_cpu_gb,
         partition=partition,
         venv_path=venv_path,
+        qos=None,
     )
     main_processing_executor.run()
 
@@ -183,6 +184,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         randomize_start_duration=mh1_cfg.randomize_start_duration,
         venv_path=venv_path,
         depends=main_processing_executor,  # only start after the first one completes
+        qos=None,
     )
 
     stage2 = SlurmPipelineExecutor(
@@ -204,6 +206,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         cpus_per_task=mh2_cfg.cpus_per_task,  # you can add run more (smaller) tasks if you do not have a lot of memory
         venv_path=venv_path,
         depends=stage1,
+        qos=None,
     )
 
     stage3 = SlurmPipelineExecutor(
@@ -223,6 +226,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         cpus_per_task=mh3_cfg.cpus_per_task,  # if you dedup a full dump, you do need a lot of memory for this one
         venv_path=venv_path,
         depends=stage2,
+        qos=None,
     )
 
     stage4 = SlurmPipelineExecutor(
@@ -245,6 +249,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         mem_per_cpu_gb=mh4_cfg.mem_per_cpu_gb,
         venv_path=venv_path,
         depends=stage3,
+        qos=None,
     )
 
     # launch dedup pipelines
