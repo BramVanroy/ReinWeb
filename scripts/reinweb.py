@@ -145,7 +145,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         mem_per_cpu_gb=extract_cfg.mem_per_cpu_gb,
         partition=partition,
         venv_path=venv_path,
-        qos=None,
+        qos="",
         sbatch_args=sbatch_args,
     )
     main_processing_executor.run()
@@ -166,16 +166,16 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
     )
     pd_base_minhash = f"{output_path}/minhash"
     pd_logs_minhash = f"{output_path}/logs/minhash"
-    pd_slurm_logs_minhash = "slurm_logs/minhash"
+    pd_slurm_logs_minhash = str(Path(__file__).parent.parent / "slurm_logs" / "minhash")
 
     # this is the original data that we want to deduplicate
-    INPUT_READER = JsonlReader(f"{pd_base_filter}/output/{dump}")  # this is the output from the first part
+    input_reader = JsonlReader(f"{pd_base_filter}/output/{dump}")  # this is the output from the first part
 
     # stage 1 computes minhash signatures for each task (each task gets a set of files)
     stage1 = SlurmPipelineExecutor(
         job_name=f"mh1_{dump}",
         pipeline=[
-            INPUT_READER,
+            input_reader,
             MinhashDedupSignature(output_folder=f"{pd_base_minhash}/{dump}/signatures", config=minhash_config),
         ],
         tasks=mh1_cfg.tasks,
@@ -186,7 +186,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         randomize_start_duration=mh1_cfg.randomize_start_duration,
         venv_path=venv_path,
         depends=main_processing_executor,  # only start after the first one completes
-        qos=None,
+        qos="",
         sbatch_args=sbatch_args,
     )
 
@@ -209,7 +209,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         cpus_per_task=mh2_cfg.cpus_per_task,  # you can add run more (smaller) tasks if you do not have a lot of memory
         venv_path=venv_path,
         depends=stage1,
-        qos=None,
+        qos="",
         sbatch_args=sbatch_args,
     )
 
@@ -230,14 +230,14 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         cpus_per_task=mh3_cfg.cpus_per_task,  # if you dedup a full dump, you do need a lot of memory for this one
         venv_path=venv_path,
         depends=stage2,
-        qos=None,
+        qos="",
         sbatch_args=sbatch_args,
     )
 
     stage4 = SlurmPipelineExecutor(
         job_name=f"mh4_{dump}",
         pipeline=[
-            INPUT_READER,
+            input_reader,
             TokensCounter(
                 tokenizer_name_or_path="yhavinga/gpt2-medium-dutch"
             ),  # you can remove this one, it's just a nice way to know how many tokens we have
@@ -254,7 +254,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         mem_per_cpu_gb=mh4_cfg.mem_per_cpu_gb,
         venv_path=venv_path,
         depends=stage3,
-        qos=None,
+        qos="",
         sbatch_args=sbatch_args,
     )
 
