@@ -53,7 +53,7 @@ new_line_ratio: float = 0.3, -> 0.264 (wiki: 99 percentile)
 class BaseConfig(BaseModel):
     tasks: int
     time: str
-    mem_per_cpu_gb: int | float = 2
+    mem_per_cpu_gb: int = 2
     cpus_per_task: int = 1
     randomize_start_duration: int = 0
 
