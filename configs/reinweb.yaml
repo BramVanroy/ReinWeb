@@ -1,0 +1,44 @@
+extractor:
+  tasks: 8000
+  time: "10:00:00"
+  mem_per_cpu_gb: 2
+  randomize_start_duration: 180
+  gopher_quality_filter:
+    max_avg_word_length: 16
+    max_non_alpha_words_ratio: 0.806
+  fineweb_quality_filter:
+    line_punct_thr: 0.088
+    short_line_thr: 0.67
+    short_line_length: 27
+    char_duplicates_ratio: 0.034
+    new_line_ratio: 0.264
+
+minhash:
+  hash_config:
+    hash_fc: "sha1"
+    precision: 64
+  num_buckets: 14
+  hashes_per_bucket: 8
+  n_grams: 5
+
+mh1:
+  tasks: 1000
+  time: "05:00:00"
+
+mh2:
+  tasks: 1  # Actually set automatically based on num buckets * 50
+  time: "02:00:00"
+  mem_per_cpu_gb: 4
+  cpus_per_task: 3
+  randomize_start_duration: 180
+
+mh3:
+  tasks: 1
+  time: "30:00:00"
+  mem_per_cpu_gb: 25
+  cpus_per_task: 8
+
+mh4:
+  tasks: 1000
+  time: "05:00:00"
+  mem_per_cpu_gb: 4
