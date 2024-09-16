@@ -91,8 +91,9 @@ datatrove.pipeline.filters.c4_filters.POLICY_SUBSTRINGS = set(
 )
 
 
-def main(dump: str, output_path: str, partition: str, pipelines_config: str, venv_path: str | None = None):
+def main(dump: str, output_path: str, partition: str, pipelines_config: str, venv_path: str | None = None, account: str | None = None):
     configs = yaml.safe_load(Path(pipelines_config).read_text(encoding="utf-8"))
+    sbatch_args = {"account": account} if account else {}
 
     extract_cfg = ExtractorCfg(**configs["extractor"])
     mh_cfg = MinhashCfg(**configs["minhash"])
@@ -145,6 +146,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         partition=partition,
         venv_path=venv_path,
         qos=None,
+        sbatch_args=sbatch_args,
     )
     main_processing_executor.run()
 
@@ -185,6 +187,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         venv_path=venv_path,
         depends=main_processing_executor,  # only start after the first one completes
         qos=None,
+        sbatch_args=sbatch_args,
     )
 
     stage2 = SlurmPipelineExecutor(
@@ -207,6 +210,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         venv_path=venv_path,
         depends=stage1,
         qos=None,
+        sbatch_args=sbatch_args,
     )
 
     stage3 = SlurmPipelineExecutor(
@@ -227,6 +231,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         venv_path=venv_path,
         depends=stage2,
         qos=None,
+        sbatch_args=sbatch_args,
     )
 
     stage4 = SlurmPipelineExecutor(
@@ -250,6 +255,7 @@ def main(dump: str, output_path: str, partition: str, pipelines_config: str, ven
         venv_path=venv_path,
         depends=stage3,
         qos=None,
+        sbatch_args=sbatch_args,
     )
 
     # launch dedup pipelines
@@ -267,5 +273,6 @@ if __name__ == "__main__":
     cparser.add_argument("--partition", type=str, required=True, help="Slurm partition")
     cparser.add_argument("--pipelines_config", type=str, required=True, help="Path to the pipelines YAML config file")
     cparser.add_argument("--venv_path", type=str, help="Path to the virtual environment")
+
     cli_kwargs = vars(cparser.parse_args())
     main(**cli_kwargs)
