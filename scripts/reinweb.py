@@ -3,6 +3,7 @@ This file contains the code used to process and create the
 ReinWeb dataset. Heavily inspired by https://raw.githubusercontent.com/huggingface/datatrove/main/examples/fineweb.py
 """
 
+import os
 from dataclasses import field
 from pathlib import Path
 from typing import Literal, Optional
@@ -91,7 +92,23 @@ datatrove.pipeline.filters.c4_filters.POLICY_SUBSTRINGS = set(
 )
 
 
-def main(dump: str, output_path: str, partition: str, pipelines_config: str, venv_path: str | None = None, account: str | None = None):
+def print_system_stats():
+    """
+    Print out the number of CPU cores on the system as well as the available memory.
+    """
+    print(f"Number of CPU cores: {os.cpu_count()}")
+    print(f"Available memory: {os.popen('free -h').read()}")
+
+
+def main(
+    dump: str,
+    output_path: str,
+    partition: str,
+    pipelines_config: str,
+    venv_path: str | None = None,
+    account: str | None = None,
+):
+    print_system_stats()
     configs = yaml.safe_load(Path(pipelines_config).read_text(encoding="utf-8"))
     sbatch_args = {"account": account} if account else {}
 
