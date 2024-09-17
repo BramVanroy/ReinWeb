@@ -57,6 +57,7 @@ class BaseConfig(BaseModel):
     mem_per_cpu_gb: int = 2
     cpus_per_task: int = 1
     randomize_start_duration: int = 0
+    do_pipeline: bool = True
 
 
 class ExtractorCfg(BaseConfig):
@@ -121,51 +122,53 @@ def main(
 
     pd_base_filter = f"{output_path}/base_processing"
 
-    main_processing_executor = SlurmPipelineExecutor(
-        job_name=f"cc_{dump}",
-        pipeline=[
-            WarcReader(
-                f"s3://commoncrawl/crawl-data/{dump}/segments/",
-                glob_pattern="*/warc/*",  # we want the warc files
-                default_metadata={"dump": dump},
-            ),
-            URLFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/1_url/{dump}")),
-            Trafilatura(favour_precision=True),
-            LanguageFilter(languages="nld", language_threshold=0.8),
-            GopherRepetitionFilter(
-                exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"), language=Languages.dutch
-            ),
-            GopherQualityFilter(
-                exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/4_gopher_qual/{dump}"),
-                language=Languages.dutch,
-                stop_words=STOP_WORDS_DUTCH,
-                **extract_cfg.gopher_quality_filter,
-            ),
-            C4QualityFilter(
-                filter_no_terminal_punct=False,
-                exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/5_c4/{dump}"),
-                language=Languages.dutch,
-                **extract_cfg.c4_quality_filter,
-            ),
-            FineWebQualityFilter(
-                exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/6_fineweb_qual/{dump}"),
-                language=Languages.dutch,
-                **extract_cfg.fineweb_quality_filter,
-            ),
-            JsonlWriter(f"{pd_base_filter}/output/{dump}"),
-        ],
-        tasks=extract_cfg.tasks,
-        time=extract_cfg.time,
-        logging_dir=f"{output_path}/logs/base_processing/{dump}",
-        slurm_logs_folder=f"reinweb-logs/base_processing/{dump}/slurm_logs",  # must be local
-        randomize_start_duration=extract_cfg.randomize_start_duration,  # don't hit the bucket all at once with the list requests
-        mem_per_cpu_gb=extract_cfg.mem_per_cpu_gb,
-        partition=partition,
-        venv_path=venv_path,
-        qos="",
-        sbatch_args=sbatch_args,
-    )
-    main_processing_executor.run()
+    main_processing_executor = None
+    if extract_cfg.do_pipeline:
+        main_processing_executor = SlurmPipelineExecutor(
+            job_name=f"cc_{dump}",
+            pipeline=[
+                WarcReader(
+                    f"s3://commoncrawl/crawl-data/{dump}/segments/",
+                    glob_pattern="*/warc/*",  # we want the warc files
+                    default_metadata={"dump": dump},
+                ),
+                URLFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/1_url/{dump}")),
+                Trafilatura(favour_precision=True),
+                LanguageFilter(languages="nld", language_threshold=0.8),
+                GopherRepetitionFilter(
+                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"), language=Languages.dutch
+                ),
+                GopherQualityFilter(
+                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/4_gopher_qual/{dump}"),
+                    language=Languages.dutch,
+                    stop_words=STOP_WORDS_DUTCH,
+                    **extract_cfg.gopher_quality_filter,
+                ),
+                C4QualityFilter(
+                    filter_no_terminal_punct=False,
+                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/5_c4/{dump}"),
+                    language=Languages.dutch,
+                    **extract_cfg.c4_quality_filter,
+                ),
+                FineWebQualityFilter(
+                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/6_fineweb_qual/{dump}"),
+                    language=Languages.dutch,
+                    **extract_cfg.fineweb_quality_filter,
+                ),
+                JsonlWriter(f"{pd_base_filter}/output/{dump}"),
+            ],
+            tasks=extract_cfg.tasks,
+            time=extract_cfg.time,
+            logging_dir=f"{output_path}/logs/base_processing/{dump}",
+            slurm_logs_folder=f"reinweb-logs/base_processing/{dump}/slurm_logs",  # must be local
+            randomize_start_duration=extract_cfg.randomize_start_duration,  # don't hit the bucket all at once with the list requests
+            mem_per_cpu_gb=extract_cfg.mem_per_cpu_gb,
+            partition=partition,
+            venv_path=venv_path,
+            qos="",
+            sbatch_args=sbatch_args,
+        )
+        main_processing_executor.run()
 
     """
         we then applied minhash deduplication to each individual dump,
@@ -189,94 +192,102 @@ def main(
     input_reader = JsonlReader(f"{pd_base_filter}/output/{dump}")  # this is the output from the first part
 
     # stage 1 computes minhash signatures for each task (each task gets a set of files)
-    stage1 = SlurmPipelineExecutor(
-        job_name=f"mh1_{dump}",
-        pipeline=[
-            input_reader,
-            MinhashDedupSignature(output_folder=f"{pd_base_minhash}/{dump}/signatures", config=minhash_config),
-        ],
-        tasks=mh1_cfg.tasks,
-        time=mh1_cfg.time,
-        partition=partition,
-        logging_dir=f"{pd_logs_minhash}/signatures",
-        slurm_logs_folder=f"{pd_slurm_logs_minhash}/signatures/slurm_logs",
-        randomize_start_duration=mh1_cfg.randomize_start_duration,
-        venv_path=venv_path,
-        depends=main_processing_executor,  # only start after the first one completes
-        qos="",
-        sbatch_args=sbatch_args,
-    )
+    stage1 = None
+    if mh1_cfg.do_pipeline:
+        stage1 = SlurmPipelineExecutor(
+            job_name=f"mh1_{dump}",
+            pipeline=[
+                input_reader,
+                MinhashDedupSignature(output_folder=f"{pd_base_minhash}/{dump}/signatures", config=minhash_config),
+            ],
+            tasks=mh1_cfg.tasks,
+            time=mh1_cfg.time,
+            partition=partition,
+            logging_dir=f"{pd_logs_minhash}/signatures",
+            slurm_logs_folder=f"{pd_slurm_logs_minhash}/signatures/slurm_logs",
+            randomize_start_duration=mh1_cfg.randomize_start_duration,
+            venv_path=venv_path,
+            depends=main_processing_executor,  # only start after the first one completes
+            qos="",
+            sbatch_args=sbatch_args,
+        )
+        stage1.run()
 
-    stage2 = SlurmPipelineExecutor(
-        job_name=f"mh2_{dump}",
-        pipeline=[
-            MinhashDedupBuckets(
-                input_folder=f"{pd_base_minhash}/{dump}/signatures",
-                output_folder=f"{pd_base_minhash}/{dump}/buckets",
-                config=MinhashConfig(hash_config=minhash_config.hash_config),
-            ),
-        ],
-        tasks=minhash_config.num_buckets * 50,  # the code supports parallelizing each bucket. here we run 50
-        # workers per bucket
-        randomize_start_duration=mh2_cfg.randomize_start_duration,
-        logging_dir=f"{pd_logs_minhash}/buckets",
-        partition=partition,
-        time=mh2_cfg.time,
-        mem_per_cpu_gb=mh2_cfg.mem_per_cpu_gb,
-        cpus_per_task=mh2_cfg.cpus_per_task,  # you can add run more (smaller) tasks if you do not have a lot of memory
-        venv_path=venv_path,
-        depends=stage1,
-        qos="",
-        sbatch_args=sbatch_args,
-    )
+    stage2 = None
+    if mh2_cfg.do_pipeline:
+        stage2 = SlurmPipelineExecutor(
+            job_name=f"mh2_{dump}",
+            pipeline=[
+                MinhashDedupBuckets(
+                    input_folder=f"{pd_base_minhash}/{dump}/signatures",
+                    output_folder=f"{pd_base_minhash}/{dump}/buckets",
+                    config=MinhashConfig(hash_config=minhash_config.hash_config),
+                ),
+            ],
+            tasks=minhash_config.num_buckets * 50,  # the code supports parallelizing each bucket. here we run 50
+            # workers per bucket
+            randomize_start_duration=mh2_cfg.randomize_start_duration,
+            logging_dir=f"{pd_logs_minhash}/buckets",
+            partition=partition,
+            time=mh2_cfg.time,
+            mem_per_cpu_gb=mh2_cfg.mem_per_cpu_gb,
+            cpus_per_task=mh2_cfg.cpus_per_task,  # you can add run more (smaller) tasks if you do not have a lot of memory
+            venv_path=venv_path,
+            depends=stage1,
+            qos="",
+            sbatch_args=sbatch_args,
+        )
+        stage2.run()
 
-    stage3 = SlurmPipelineExecutor(
-        job_name=f"mh3_{dump}",
-        pipeline=[
-            MinhashDedupCluster(
-                input_folder=f"{pd_base_minhash}/{dump}/buckets",
-                output_folder=f"{pd_base_minhash}/{dump}/remove_ids",
-                config=minhash_config,
-            ),
-        ],
-        tasks=mh3_cfg.tasks,  # this step runs on a single task
-        logging_dir=f"{pd_logs_minhash}/clustering",
-        partition=partition,
-        time=mh3_cfg.time,  # and can also be quite slow. Usually not this slow though
-        mem_per_cpu_gb=mh3_cfg.mem_per_cpu_gb,
-        cpus_per_task=mh3_cfg.cpus_per_task,  # if you dedup a full dump, you do need a lot of memory for this one
-        venv_path=venv_path,
-        depends=stage2,
-        qos="",
-        sbatch_args=sbatch_args,
-    )
+    stage3 = None
+    if mh3_cfg.do_pipeline:
+        stage3 = SlurmPipelineExecutor(
+            job_name=f"mh3_{dump}",
+            pipeline=[
+                MinhashDedupCluster(
+                    input_folder=f"{pd_base_minhash}/{dump}/buckets",
+                    output_folder=f"{pd_base_minhash}/{dump}/remove_ids",
+                    config=minhash_config,
+                ),
+            ],
+            tasks=mh3_cfg.tasks,  # this step runs on a single task
+            logging_dir=f"{pd_logs_minhash}/clustering",
+            partition=partition,
+            time=mh3_cfg.time,  # and can also be quite slow. Usually not this slow though
+            mem_per_cpu_gb=mh3_cfg.mem_per_cpu_gb,
+            cpus_per_task=mh3_cfg.cpus_per_task,  # if you dedup a full dump, you do need a lot of memory for this one
+            venv_path=venv_path,
+            depends=stage2,
+            qos="",
+            sbatch_args=sbatch_args,
+        )
+        stage3.run()
 
-    stage4 = SlurmPipelineExecutor(
-        job_name=f"mh4_{dump}",
-        pipeline=[
-            input_reader,
-            TokensCounter(
-                tokenizer_name_or_path="yhavinga/gpt2-medium-dutch"
-            ),  # you can remove this one, it's just a nice way to know how many tokens we have
-            # before and after dedup
-            MinhashDedupFilter(input_folder=f"{pd_base_minhash}/{dump}/remove_ids"),
-            # run the PII removal
-            PIIFormatter(),
-            JsonlWriter(f"{pd_base_minhash}/{dump}/deduped_output"),
-        ],
-        tasks=mh1_cfg.tasks,
-        logging_dir=f"{pd_logs_minhash}/filtering",
-        partition=partition,
-        time=mh4_cfg.time,
-        mem_per_cpu_gb=mh4_cfg.mem_per_cpu_gb,
-        venv_path=venv_path,
-        depends=stage3,
-        qos="",
-        sbatch_args=sbatch_args,
-    )
-
-    # launch dedup pipelines
-    stage4.run()
+    if mh4_cfg.do_pipeline:
+        stage4 = SlurmPipelineExecutor(
+            job_name=f"mh4_{dump}",
+            pipeline=[
+                input_reader,
+                TokensCounter(
+                    tokenizer_name_or_path="yhavinga/gpt2-medium-dutch"
+                ),  # you can remove this one, it's just a nice way to know how many tokens we have
+                # before and after dedup
+                MinhashDedupFilter(input_folder=f"{pd_base_minhash}/{dump}/remove_ids"),
+                # run the PII removal
+                PIIFormatter(),
+                JsonlWriter(f"{pd_base_minhash}/{dump}/deduped_output"),
+            ],
+            tasks=mh1_cfg.tasks,
+            logging_dir=f"{pd_logs_minhash}/filtering",
+            partition=partition,
+            time=mh4_cfg.time,
+            mem_per_cpu_gb=mh4_cfg.mem_per_cpu_gb,
+            venv_path=venv_path,
+            depends=stage3,
+            qos="",
+            sbatch_args=sbatch_args,
+        )
+        stage4.run()
 
 
 if __name__ == "__main__":
