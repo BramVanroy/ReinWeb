@@ -3,6 +3,7 @@ This file contains the code used to process and create the
 ReinWeb dataset. Heavily inspired by https://raw.githubusercontent.com/huggingface/datatrove/main/examples/fineweb.py
 """
 
+import logging
 import os
 from dataclasses import field
 from pathlib import Path
@@ -30,6 +31,8 @@ from datatrove.utils.hashing import HashConfig
 from datatrove.utils.typeshelper import Languages
 from pydantic import BaseModel
 
+from rein.reinweb_lines_formatter import ReinwebLinesFilter
+from rein.reinweb_quality_filter import ReinWebQualityFilter
 from rein.utils import STOP_WORDS_DUTCH
 
 
@@ -64,6 +67,7 @@ class ExtractorCfg(BaseConfig):
     gopher_quality_filter: Optional[dict] = field(default_factory=dict)
     c4_quality_filter: Optional[dict] = field(default_factory=dict)
     fineweb_quality_filter: Optional[dict] = field(default_factory=dict)
+    reinweb_quality_filter: Optional[dict] = field(default_factory=dict)
 
 
 class HashCfg(BaseModel):
@@ -129,14 +133,16 @@ def main(
             pipeline=[
                 WarcReader(
                     f"s3://commoncrawl/crawl-data/{dump}/segments/",
-                    glob_pattern="*/warc/*",  # we want the warc files
+                    glob_pattern="*/warc/*",
                     default_metadata={"dump": dump},
                 ),
                 URLFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/1_url/{dump}")),
-                Trafilatura(favour_precision=True),
-                LanguageFilter(languages="nld", language_threshold=0.8),
+                Trafilatura(favour_precision=True, timeout=600.0),
+                ReinwebLinesFilter(),
+                LanguageFilter(languages="nld", language_threshold=0.75),
                 GopherRepetitionFilter(
-                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"), language=Languages.dutch
+                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"),
+                    language=Languages.dutch,
                 ),
                 GopherQualityFilter(
                     exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/4_gopher_qual/{dump}"),
@@ -154,6 +160,11 @@ def main(
                     exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/6_fineweb_qual/{dump}"),
                     language=Languages.dutch,
                     **extract_cfg.fineweb_quality_filter,
+                ),
+                ReinWebQualityFilter(
+                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/7_reinweb_qual/{dump}"),
+                    language=Languages.dutch,
+                    **extract_cfg.reinweb_quality_filter,
                 ),
                 JsonlWriter(f"{pd_base_filter}/output/{dump}"),
             ],
@@ -215,6 +226,13 @@ def main(
 
     stage2 = None
     if mh2_cfg.do_pipeline:
+        if mh2_cfg.tasks != 1:
+            logging.warning(
+                f"You set the number of tasks for Minhash stage 2 to {mh2_cfg.tasks} but this will not have an effect."
+                f" The value is automatically set to 50 * minhash.num_buckets."
+                f" If you want to run more tasks, you can increase the number of buckets."
+            )
+
         stage2 = SlurmPipelineExecutor(
             job_name=f"mh2_{dump}",
             pipeline=[
@@ -224,14 +242,15 @@ def main(
                     config=MinhashConfig(hash_config=minhash_config.hash_config),
                 ),
             ],
-            tasks=minhash_config.num_buckets * 50,  # the code supports parallelizing each bucket. here we run 50
-            # workers per bucket
+            # the code supports parallelizing each bucket. here we run 50 workers per bucket
+            tasks=minhash_config.num_buckets * 50,
             randomize_start_duration=mh2_cfg.randomize_start_duration,
             logging_dir=f"{pd_logs_minhash}/buckets",
             partition=partition,
             time=mh2_cfg.time,
             mem_per_cpu_gb=mh2_cfg.mem_per_cpu_gb,
-            cpus_per_task=mh2_cfg.cpus_per_task,  # you can add run more (smaller) tasks if you do not have a lot of memory
+            # you can add run more (smaller) tasks if you do not have a lot of memory
+            cpus_per_task=mh2_cfg.cpus_per_task,
             venv_path=venv_path,
             depends=stage1,
             qos="",
@@ -250,12 +269,13 @@ def main(
                     config=minhash_config,
                 ),
             ],
-            tasks=mh3_cfg.tasks,  # this step runs on a single task
+            tasks=mh3_cfg.tasks,
             logging_dir=f"{pd_logs_minhash}/clustering",
             partition=partition,
-            time=mh3_cfg.time,  # and can also be quite slow. Usually not this slow though
+            time=mh3_cfg.time,
             mem_per_cpu_gb=mh3_cfg.mem_per_cpu_gb,
-            cpus_per_task=mh3_cfg.cpus_per_task,  # if you dedup a full dump, you do need a lot of memory for this one
+            # if you dedup a full dump, you do need a lot of memory for this one
+            cpus_per_task=mh3_cfg.cpus_per_task,
             venv_path=venv_path,
             depends=stage2,
             qos="",
@@ -268,10 +288,8 @@ def main(
             job_name=f"mh4_{dump}",
             pipeline=[
                 input_reader,
-                TokensCounter(
-                    tokenizer_name_or_path="yhavinga/gpt2-medium-dutch"
-                ),  # you can remove this one, it's just a nice way to know how many tokens we have
-                # before and after dedup
+                # you can remove this one, it's just a nice way to know how many tokens we have before and after dedup
+                TokensCounter(tokenizer_name_or_path="yhavinga/gpt2-medium-dutch"),
                 MinhashDedupFilter(input_folder=f"{pd_base_minhash}/{dump}/remove_ids"),
                 # run the PII removal
                 PIIFormatter(),

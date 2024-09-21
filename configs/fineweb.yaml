@@ -1,15 +1,8 @@
 extractor:
   tasks: 8000
-  time: "1-00:00:00"
+  time: "10:00:00"
   mem_per_cpu_gb: 2
-  randomize_start_duration: 600
-  gopher_quality_filter:
-    min_doc_words: 47
-    max_non_alpha_words_ratio: 0.75
-  fineweb_quality_filter:
-    line_punct_thr: 0.13
-    short_line_thr: 0.6
-    short_line_length: 50
+  randomize_start_duration: 180
 
 minhash:
   hash_config:
@@ -21,22 +14,22 @@ minhash:
 
 mh1:
   tasks: 1000
-  time: "1-00:00:00"
+  time: "05:00:00"
 
 mh2:
   tasks: 1  # Actually set automatically based on num buckets * 50
-  time: "1-00:00:00"
+  time: "02:00:00"
   mem_per_cpu_gb: 4
   cpus_per_task: 3
-  randomize_start_duration: 600
+  randomize_start_duration: 180
 
 mh3:
   tasks: 1
-  time: "2-00:00:00"
+  time: "30:00:00"
   mem_per_cpu_gb: 25
   cpus_per_task: 8
 
 mh4:
   tasks: 1000
-  time: "1-00:00:00"
+  time: "05:00:00"
   mem_per_cpu_gb: 4
