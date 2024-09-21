@@ -6,6 +6,22 @@ from datatrove.utils.word_tokenizers import load_word_tokenizer
 from rein.utils import is_latin, only_roman_chars
 
 
+class ReinWebEmptyDocFilter(BaseFilter):
+    name = "🌊 ReinWeb EmptyDoc Filter"
+
+    def __init__(
+        self,
+        exclusion_writer: DiskWriter = None,
+    ):
+        super().__init__(exclusion_writer)
+
+    def filter(self, doc) -> bool | tuple[bool, str]:
+        if doc.text.strip() == "":
+            return False, "rw_empty_doc"
+
+        return True
+
+
 class ReinWebQualityFilter(BaseFilter):
     name = "🌊 ReinWeb Quality"
 

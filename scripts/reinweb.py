@@ -32,7 +32,7 @@ from datatrove.utils.typeshelper import Languages
 from pydantic import BaseModel
 
 from rein.reinweb_lines_formatter import ReinwebLinesFilter
-from rein.reinweb_quality_filter import ReinWebQualityFilter
+from rein.reinweb_quality_filter import ReinWebQualityFilter, ReinWebEmptyDocFilter
 from rein.utils import STOP_WORDS_DUTCH
 
 
@@ -139,6 +139,8 @@ def main(
                 URLFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/1_url/{dump}")),
                 Trafilatura(favour_precision=True, timeout=600.0),
                 ReinwebLinesFilter(),
+                # Empty docs are possible after ReinwebLinesFilter
+                ReinWebEmptyDocFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/2_empty_doc/{dump}")),
                 LanguageFilter(languages="nld", language_threshold=0.75),
                 GopherRepetitionFilter(
                     exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"),
