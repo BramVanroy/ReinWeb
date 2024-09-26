@@ -32,26 +32,8 @@ from datatrove.utils.typeshelper import Languages
 from pydantic import BaseModel
 
 from rein.reinweb_lines_formatter import ReinwebLinesFilter
-from rein.reinweb_quality_filter import ReinWebQualityFilter, ReinWebEmptyDocFilter
+from rein.reinweb_quality_filter import ReinWebEmptyDocFilter, ReinWebQualityFilter
 from rein.utils import STOP_WORDS_DUTCH
-
-
-"""
-GOPHER and default values (English) -> Dutch values
-
-max_avg_word_length: int | None = 10,   --> all: 16 (99 percentile)
-max_non_alpha_words_ratio: float | None = 0.8,  --> all: 0.806 (mean)
-
-
-FEATURES FINEWEB and default values (English) -> Dutch values
-
-line_punct_thr: float = 0.12,  -> 0.088 (wiki: 5 percentile)
-line_punct_exclude_zero: bool = False,
-short_line_thr: float = 0.67,
-short_line_length: int = 30,  -> 27 (wiki: 5 percentile (95% of cases are longer))
-char_duplicates_ratio: float = 0.01, -> 0.034 (wiki: 99 percentile)
-new_line_ratio: float = 0.3, -> 0.264 (wiki: 99 percentile)
-"""
 
 
 class BaseConfig(BaseModel):
@@ -64,6 +46,7 @@ class BaseConfig(BaseModel):
 
 
 class ExtractorCfg(BaseConfig):
+    lang_filter_language_threshold: float = 0.65
     gopher_quality_filter: Optional[dict] = field(default_factory=dict)
     c4_quality_filter: Optional[dict] = field(default_factory=dict)
     fineweb_quality_filter: Optional[dict] = field(default_factory=dict)
@@ -141,7 +124,7 @@ def main(
                 ReinwebLinesFilter(),
                 # Empty docs are possible after ReinwebLinesFilter
                 ReinWebEmptyDocFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/2_empty_doc/{dump}")),
-                LanguageFilter(languages="nld", language_threshold=0.75),
+                LanguageFilter(languages="nl", language_threshold=extract_cfg.lang_filter_language_threshold),
                 GopherRepetitionFilter(
                     exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"),
                     language=Languages.dutch,
