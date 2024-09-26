@@ -1,21 +1,4 @@
-"""Calculate the heuristics features from Gopher and FineWeb but specifically for Dutch text by using SONAR and wiki data.
-
-FEATURES GOHPER and default values (English)
-
-max_avg_word_length: int | None = 10,   --> all: 16 (99 percentile)
-max_non_alpha_words_ratio: float | None = 0.8,  --> all: 0.806 (mean)
-
-
-FEATURES FINEWEB and default values (English)
-
-line_punct_thr: float = 0.12,  -> 0.088 (wiki: 5 percentile)
-line_punct_exclude_zero: bool = False,
-short_line_thr: float = 0.67,
-short_line_length: int = 30,  -> 27 (wiki: 5 percentile (95% of cases are longer))
-char_duplicates_ratio: float = 0.01, -> 0.034 (wiki: 99 percentile)
-new_line_ratio: float = 0.3, -> 0.264 (wiki: 99 percentile)
-
-"""
+"""Calculate the heuristics features from Gopher and FineWeb but specifically for Dutch text by using SONAR and wiki data."""
 
 import json
 from dataclasses import dataclass
