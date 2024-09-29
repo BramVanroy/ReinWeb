@@ -124,7 +124,7 @@ def main(
                 ReinwebLinesFilter(),
                 # Empty docs are possible after ReinwebLinesFilter
                 ReinWebEmptyDocFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/2_empty_doc/{dump}")),
-                LanguageFilter(languages="nl", language_threshold=extract_cfg.lang_filter_language_threshold),
+                LanguageFilter(languages=["nl"], language_threshold=extract_cfg.lang_filter_language_threshold),
                 GopherRepetitionFilter(
                     exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"),
                     language=Languages.dutch,
