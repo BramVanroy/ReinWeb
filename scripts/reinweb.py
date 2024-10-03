@@ -9,7 +9,6 @@ from dataclasses import field
 from pathlib import Path
 from typing import Literal, Optional
 
-import datatrove
 import yaml
 from datatrove.executor.slurm import SlurmPipelineExecutor
 from datatrove.pipeline.dedup import MinhashDedupCluster, MinhashDedupFilter, MinhashDedupSignature
@@ -47,6 +46,7 @@ class BaseConfig(BaseModel):
 
 class ExtractorCfg(BaseConfig):
     lang_filter_language_threshold: float = 0.65
+    rw_line_lang_filter_language_threshold: float = 0.65
     gopher_quality_filter: Optional[dict] = field(default_factory=dict)
     c4_quality_filter: Optional[dict] = field(default_factory=dict)
     fineweb_quality_filter: Optional[dict] = field(default_factory=dict)
@@ -63,21 +63,6 @@ class MinhashCfg(BaseModel):
     num_buckets: int
     hashes_per_bucket: int
     n_grams: int
-
-
-# Add Dutch policy substrings to the C4 filters
-datatrove.pipeline.filters.c4_filters.POLICY_SUBSTRINGS = set(
-    datatrove.pipeline.filters.c4_filters.POLICY_SUBSTRINGS
-    + [
-        "gebruik cookies",
-        "cookies aanvaarden",
-        "gebruik van cookies",
-        "cookies weigeren",
-        "gebruiksvoorwaarden",
-        "privacybeleid",
-        "cookiebeleid",
-    ]
-)
 
 
 def print_system_stats():
@@ -119,35 +104,33 @@ def main(
                     glob_pattern="*/warc/*",
                     default_metadata={"dump": dump},
                 ),
-                URLFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/1_url/{dump}")),
+                URLFilter(),
                 Trafilatura(favour_precision=True, timeout=600.0),
-                ReinwebLinesFilter(),
+                # No language filtering. Seems too strict and leads to bad results
+                ReinwebLinesFilter(
+                    languages=False, language_threshold=extract_cfg.rw_line_lang_filter_language_threshold
+                ),
                 # Empty docs are possible after ReinwebLinesFilter
-                ReinWebEmptyDocFilter(exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/2_empty_doc/{dump}")),
+                ReinWebEmptyDocFilter(),
                 LanguageFilter(languages=["nl"], language_threshold=extract_cfg.lang_filter_language_threshold),
                 GopherRepetitionFilter(
-                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/3_gopher_rep/{dump}"),
                     language=Languages.dutch,
                 ),
                 GopherQualityFilter(
-                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/4_gopher_qual/{dump}"),
                     language=Languages.dutch,
                     stop_words=STOP_WORDS_DUTCH,
                     **extract_cfg.gopher_quality_filter,
                 ),
                 C4QualityFilter(
                     filter_no_terminal_punct=False,
-                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/5_c4/{dump}"),
                     language=Languages.dutch,
                     **extract_cfg.c4_quality_filter,
                 ),
                 FineWebQualityFilter(
-                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/6_fineweb_qual/{dump}"),
                     language=Languages.dutch,
                     **extract_cfg.fineweb_quality_filter,
                 ),
                 ReinWebQualityFilter(
-                    exclusion_writer=JsonlWriter(f"{pd_base_filter}/removed/7_reinweb_qual/{dump}"),
                     language=Languages.dutch,
                     **extract_cfg.reinweb_quality_filter,
                 ),
