@@ -4,7 +4,11 @@ from datasets import load_dataset
 
 
 def main(local_path: str, hf_repo: str, config_name: str, max_shard_size: str = "1GB", public: bool = False):
-    print(f"Uploading folder {local_path} to {hf_repo} (config: {config_name}; public: {public})")
+    print(
+        f"Uploading folder {local_path} to {hf_repo}"
+        f" in remote folder {config_name.replace('--', '/')}"
+        f" (config: {config_name}; public: {public})"
+    )
 
     num_cpus = max(os.cpu_count() - 1, 1)
     ds = load_dataset("json", data_files=f"{local_path}/*.jsonl.gz", split="train", num_proc=num_cpus)
