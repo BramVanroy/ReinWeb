@@ -1,3 +1,5 @@
+import os
+
 from datasets import load_dataset
 
 
@@ -6,7 +8,8 @@ def main(
 ):
     print(f"Uploading folder {local_path} to {hf_repo} (config: {config_name}; public: {public})")
 
-    ds = load_dataset("json", data_files=f"{local_path}/*.jsonl.gz", split="train")
+    num_cpus = max(os.cpu_count() - 1, 1)
+    ds = load_dataset("json", data_files=f"{local_path}/*.jsonl.gz", split="train", num_proc=num_cpus)
 
     ds.push_to_hub(
         repo_id=hf_repo,
