@@ -5,10 +5,12 @@ ReinWeb dataset. Heavily inspired by https://raw.githubusercontent.com/huggingfa
 
 import logging
 import os
+import re
 from dataclasses import field
 from pathlib import Path
 from typing import Literal, Optional
 
+import datatrove
 import yaml
 from datatrove.executor.slurm import SlurmPipelineExecutor
 from datatrove.pipeline.dedup import MinhashDedupCluster, MinhashDedupFilter, MinhashDedupSignature
@@ -33,6 +35,13 @@ from pydantic import BaseModel
 from rein.reinweb_lines_formatter import ReinwebLinesFilter
 from rein.reinweb_quality_filter import ReinWebEmptyDocFilter, ReinWebQualityFilter
 from rein.utils import STOP_WORDS_DUTCH
+
+
+# Set constants to Dutch
+datatrove.utils.text.WEEKDAYS_PATTERN = re.compile(r"maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag")
+datatrove.utils.text.MONTHS_PATTERN = re.compile(
+    r"januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december"
+)
 
 
 class BaseConfig(BaseModel):
@@ -177,7 +186,11 @@ def main(
             job_name=f"mh1_{dump}",
             pipeline=[
                 input_reader,
-                MinhashDedupSignature(output_folder=f"{pd_base_minhash}/{dump}/signatures", config=minhash_config),
+                MinhashDedupSignature(
+                    output_folder=f"{pd_base_minhash}/{dump}/signatures",
+                    config=minhash_config,
+                    language=Languages.dutch,
+                ),
             ],
             tasks=mh1_cfg.tasks,
             time=mh1_cfg.time,
