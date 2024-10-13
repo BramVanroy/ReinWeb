@@ -14,7 +14,7 @@ def main(local_path: str, hf_repo: str, config_name: str, max_shard_size: str = 
     )
 
     num_cpus = max(os.cpu_count() - 1, 1)
-    ds = load_dataset("json", data_files=f"{local_path}/*.jsonl.gz", split="train", num_proc=num_cpus)
+    ds = load_dataset(local_path, split="train", num_proc=num_cpus)
 
     ds.push_to_hub(
         repo_id=hf_repo,
