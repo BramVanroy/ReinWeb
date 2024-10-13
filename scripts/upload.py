@@ -6,7 +6,7 @@ def main(
 ):
     print(f"Uploading folder {local_path} to {hf_repo} (config: {config_name}; public: {public})")
 
-    ds = load_dataset("json", data_files=f"{local_path}.jsonl.gz")
+    ds = load_dataset("json", data_files=f"{local_path}.jsonl.gz", split="train")
 
     ds.push_to_hub(
         repo_id=hf_repo,
