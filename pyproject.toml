@@ -30,9 +30,10 @@ classifiers = [
     "Topic :: Text Processing",
 ]
 dependencies = [
-    "datasets==2.20.0",
+    "datasets>=2.20.0",
     "hf_transfer",
-    "PyYAML==6.0.2",
+    "huggingface_hub>=0.25.2",
+    "PyYAML>=6.0.2",
     "tqdm",
     "typer",
     "datatrove[all]@git+https://github.com/BramVanroy/datatrove",
