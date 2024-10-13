@@ -1,8 +1,10 @@
 from huggingface_hub import upload_large_folder
 
 
-def main(local_path: str, hf_repo: str, public: bool = False):
-    upload_large_folder(repo_id=hf_repo, folder_path=local_path, private=not public, repo_type="dataset")
+def main(local_path: str, hf_repo: str, revision: str | None = None, public: bool = False):
+    upload_large_folder(
+        repo_id=hf_repo, folder_path=local_path, revision=revision, private=not public, repo_type="dataset"
+    )
 
 
 if __name__ == "__main__":
