@@ -2,6 +2,7 @@ from huggingface_hub import upload_large_folder
 
 
 def main(local_path: str, hf_repo: str, revision: str | None = None, public: bool = False):
+    print(f"Uploading folder {local_path} to {hf_repo} (revision: {revision}; public: {public})")
     upload_large_folder(
         repo_id=hf_repo, folder_path=local_path, revision=revision, private=not public, repo_type="dataset"
     )
