@@ -1,10 +1,19 @@
-from huggingface_hub import upload_large_folder
+from huggingface_hub import upload_large_folder, create_branch, list_repo_refs
 
 
 def main(local_path: str, hf_repo: str, revision: str | None = None, public: bool = False):
     print(f"Uploading folder {local_path} to {hf_repo} (revision: {revision}; public: {public})")
+
+    if revision:
+        refs = list_repo_refs(hf_repo, repo_type="dataset")
+        rev_names = [b.name for b in refs.branches]
+        if revision not in rev_names:
+            print(f"Creating branch {revision}")
+            create_branch(hf_repo, repo_type="dataset", branch=revision)
+
     upload_large_folder(
-        repo_id=hf_repo, folder_path=local_path, revision=revision, private=not public, repo_type="dataset"
+        repo_id=hf_repo, folder_path=local_path, revision=revision, private=not public, repo_type="dataset",
+        allow_patterns=["*.jsonl.*", "*.jsonl"]
     )
 
 
