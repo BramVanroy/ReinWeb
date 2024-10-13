@@ -1,6 +1,9 @@
 import os
 
-from datasets import load_dataset
+from datasets import disable_caching, load_dataset
+
+
+disable_caching()
 
 
 def main(local_path: str, hf_repo: str, config_name: str, max_shard_size: str = "1GB", public: bool = False):
