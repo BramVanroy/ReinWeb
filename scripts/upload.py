@@ -1,23 +1,19 @@
-from huggingface_hub import create_branch, list_repo_refs, upload_large_folder
+from datasets import load_dataset
 
 
-def main(local_path: str, hf_repo: str, revision: str | None = None, public: bool = False):
-    print(f"Uploading folder {local_path} to {hf_repo} (revision: {revision}; public: {public})")
+def main(
+    local_path: str, hf_repo: str, max_shard_size: str = "1GB", config_name: str = "default", public: bool = False
+):
+    print(f"Uploading folder {local_path} to {hf_repo} (config: {config_name}; public: {public})")
 
-    if revision:
-        refs = list_repo_refs(hf_repo, repo_type="dataset")
-        rev_names = [b.name for b in refs.branches]
-        if revision not in rev_names:
-            print(f"Creating branch {revision}")
-            create_branch(hf_repo, repo_type="dataset", branch=revision)
+    ds = load_dataset("json", data_files=f"{local_path}.jsonl.gz")
 
-    upload_large_folder(
+    ds.push_to_hub(
         repo_id=hf_repo,
-        folder_path=local_path,
-        revision=revision,
+        config_name=config_name,
+        max_shard_size=max_shard_size,
         private=not public,
-        repo_type="dataset",
-        allow_patterns=["*.jsonl.*", "*.jsonl"],
+        commit_message=f"Upload to {hf_repo} with config {config_name} and max_shard_size {max_shard_size}",
     )
 
 
@@ -27,7 +23,8 @@ if __name__ == "__main__":
     cparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     cparser.add_argument("--local_path", type=str, required=True, help="Output path")
     cparser.add_argument("--hf_repo", type=str, required=True, help="HF repo name")
-    cparser.add_argument("--revision", type=str, help="HF repo revision/branch")
+    cparser.add_argument("--max_shard_size", type=str, help="HF repo config_name", default="1GB")
+    cparser.add_argument("--config_name", type=str, help="HF repo config_name", default="default")
     cparser.add_argument("--public", action="store_true", help="Make the repo public", default=False)
 
     cli_kwargs = vars(cparser.parse_args())
