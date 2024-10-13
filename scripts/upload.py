@@ -1,4 +1,4 @@
-from huggingface_hub import upload_large_folder, create_branch, list_repo_refs
+from huggingface_hub import create_branch, list_repo_refs, upload_large_folder
 
 
 def main(local_path: str, hf_repo: str, revision: str | None = None, public: bool = False):
@@ -12,8 +12,12 @@ def main(local_path: str, hf_repo: str, revision: str | None = None, public: boo
             create_branch(hf_repo, repo_type="dataset", branch=revision)
 
     upload_large_folder(
-        repo_id=hf_repo, folder_path=local_path, revision=revision, private=not public, repo_type="dataset",
-        allow_patterns=["*.jsonl.*", "*.jsonl"]
+        repo_id=hf_repo,
+        folder_path=local_path,
+        revision=revision,
+        private=not public,
+        repo_type="dataset",
+        allow_patterns=["*.jsonl.*", "*.jsonl"],
     )
 
 
